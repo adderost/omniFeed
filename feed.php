@@ -1,0 +1,73 @@
+<?php
+	$feedUrl  = "https://omni-content.omni.news/articles";
+	
+	$defaults = array(
+		"limit" 			=> 10,
+		"offset" 			=> 0,
+		"sort" 				=> 'latest'	//latest || newsmix
+	);
+	$feedparams = array_merge($defaults, $_GET);
+
+	$localDefaults = array(
+		"showAds"			=> false,
+		"breakCollections" 	=> false,
+		"imgWidth" 			=> 640,
+		'imgBaseUrl' 		=> "http://gfx.omni.se/images/"
+	);
+	$remoteParams = array_key_merge_deceze($defaults, $_GET);
+	$localParams = array_key_merge_deceze($localDefaults, $_GET);
+	$articledata = json_decode(file_get_contents($feedUrl."?".http_build_query($defaults)))->articles;
+
+	$cleanArticles = array();
+
+	foreach($articledata as $article){
+		$cleanArticle = cleanArticle($article, $localParams);
+		if($cleanArticle) $cleanArticles[] = $cleanArticle;
+	}
+
+	echo(json_encode($cleanArticles));
+
+	function cleanArticle($article = array(), $localParams){
+		$isAd = false;
+	
+
+		if(sizeof($article) > 1){ //This is a collection
+			if($localParams['breakCollections']){
+				$collectionParts=array();
+				foreach($article as $subArticle){
+					$cleanArticle = cleanArticle($subArticle);
+					if($cleanArticle) $collectionParts[]=$cleanArticle;
+				}
+				return($collectionParts);
+			}
+			return($article);
+		}	
+		
+		$content = $article[0];
+		$newArticle=array();
+		if($content->type == "Article"){
+			if($content->meta->is_sponsored && !$localParams['showAds']) return(false);
+			$newArticle['id'] = $content->article_id;
+			$newArticle['authors'] = $content->authors[0]->title;
+			if(sizeof($content->authors) > 1 ){ for($i=1; $i<sizeof($content->authors); $i++) {$newArticle['authors'].=", ".$content->authors[$i]->title; } }
+			$newArticle['published'] = $content->meta->changes->published;
+			$newArticle['updated'] = $content->meta->changes->updated;
+			foreach($content->resources as $resource){
+				if($resource->type == "Title")  $newArticle['title'] = $resource->text->value;
+				if($resource->type == "Text"){ foreach($resource->paragraphs as $paragraph){ if(!isset($newArticle['text'])) $newArticle['text'] = ""; $newArticle['text'].="<p>".$paragraph->text->value."</p>"; } }
+				if($resource->type == "Image") $newArticle['image'] = array('title'=> ((isset($resource->caption)) ? $resource->caption->value : ""), 'url' => $localParams['imgBaseUrl'].$resource->image_asset->id."?w=".$localParams['imgWidth']);
+			}
+
+			return($newArticle);
+		}
+		else return(false);
+	}
+
+	function array_key_merge_deceze($filtered, $changed) {
+	    $merged = array_intersect_key($changed, $filtered) + $filtered;
+	    ksort($merged);
+	    return $merged;
+	}
+
+
+?>	
