@@ -1,6 +1,15 @@
 <?php
 	$feedUrl  = "https://omni-content.omni.news/articles";
-	
+	$cachePath = "cache/feed".http_build_query($_GET);
+
+	if(file_exists($cachePath)){
+		if(filemtime($cachePath) > time()-30 ){
+			$data=file_get_contents($cachePath);
+			echo($data);
+			die();
+		}
+	}
+
 	$defaults = array(
 		"limit" 			=> 10,
 		"offset" 			=> 0,
@@ -24,8 +33,9 @@
 		$cleanArticle = cleanArticle($article, $localParams);
 		if($cleanArticle) $cleanArticles[] = $cleanArticle;
 	}
-
-	echo(json_encode($cleanArticles));
+	$data = json_encode($cleanArticles);
+	file_put_contents($cachePath, $data);
+	echo($data);
 
 	function cleanArticle($article = array(), $localParams){
 		$isAd = false;
