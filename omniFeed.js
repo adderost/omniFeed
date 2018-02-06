@@ -167,9 +167,18 @@ window.onload = function(){
 			}
 			else this.self.template.getElementsByTagName('img').item(0).style.display = "none";
 			if(this.self.title) this.self.template.getElementsByTagName('h1').item(0).innerHTML = this.self.title;
-			if(this.self.published) this.self.template.getElementsByTagName('time').item(0).innerHTML = new Date(Date.parse(this.self.published)).toISOString();
+			if(this.self.published) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.published)));
 			if(this.self.text) this.self.template.getElementsByTagName('div').item(0).innerHTML = this.self.text;
 			if(this.self.author) this.self.template.getElementsByTagName('span').item(0).innerHTML = this.self.author;
+		}
+
+		this.formatTime = function(time){
+			Number.prototype.pad = function(size) {
+			  var s = String(this);
+			  while (s.length < (size || 2)) {s = "0" + s;}
+			  return s;
+			}
+			return (time.getFullYear()+"-"+time.getMonth().pad(2)+"-"+time.getDate().pad(2)+" "+time.getHours().pad(2)+":"+time.getMinutes().pad(2)+":"+time.getSeconds().pad(2));
 		}
 
 		this.moveTo = function(pos){
