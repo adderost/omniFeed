@@ -84,7 +84,7 @@ window.onload = function(){
 
 		this.sortAndMoveArticles = function(){
 			this.self.height = this.self.container.clientHeight //Setup height of feed
-			
+
 			//Move all articles to new array, remove deleted ones.
 			var cleanArticles = Array();
 			for(var i=0; i<this.articles.length;i++){
@@ -167,7 +167,7 @@ window.onload = function(){
 			if(data.id == this.self.id){
 				if(data.updated > this.self.updated){
 					this.getContentFromData(data);
-					console.log("Updated article \""+this.self.title+"\"");
+					devlog("Updated article \""+this.self.title+"\"");
 				}
 				return(true);
 			}
@@ -206,7 +206,7 @@ window.onload = function(){
 		}
 
 		this.remove = function(){
-			console.log("Removing article \""+this.self.title+"\"");
+			devlog("Removing article \""+this.self.title+"\"");
 			this.hide();
 		}
 
@@ -216,16 +216,24 @@ window.onload = function(){
 		}
 
 		this.self.getContentFromData(data);
-		console.log("Added new article \""+this.self.title+"\"");
+		devlog("Added new article \""+this.self.title+"\"");
 	}
 
 
 	//HELPER FUNCTIONS
-	
+	var devtools = /./;
+	devtools.toString = function() {
+	  this.opened = true;
+	}
 
+	function devlog(msg){
+		if(devtools){
+			console.log(msg);
+		}
+	}
 
+	//Start stuff
 	var container = document.getElementById('omnifeed');
 	var containerObj = new feedContainer(container);
 
-	
 }
