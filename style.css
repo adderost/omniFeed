@@ -26,6 +26,9 @@ article>img{
 	width: 150px;
 	height: 150px;
 	background: gray;
+	background-size: cover;
+	background-position: center center;
+	margin-left: 2em;
 }
 
 article>h1{
