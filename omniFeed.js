@@ -22,7 +22,7 @@ window.onload = function(){
 			this.self.transitionTime = articleTemplate.style.getPropertyValue('transition-duration');
 
 			var duration = window.getComputedStyle(articleTemplate).getPropertyValue('transition-duration');
-			this.self.transitionTime = ((duration.indexOf( 'ms' ) >- 1 ) ? parseFloat( duration ) : parseFloat( duration ) * 1000)
+			this.self.transitionTime = Math.max(((duration.indexOf( 'ms' ) >- 1 ) ? parseFloat( duration ) : parseFloat( duration ) * 1000), 500);
 			this.self.imageWidth = parseFloat(window.getComputedStyle(articleTemplate.getElementsByTagName('img').item(0)).getPropertyValue("width"));
 			this.self.margin = parseFloat(window.getComputedStyle(articleTemplate).getPropertyValue('margin-bottom'))
 	
@@ -137,7 +137,7 @@ window.onload = function(){
 			else this.firstTime = false;
 
 			var that = this;
-			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*2));
+			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*4));
 		}
 
 		this.customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success.
