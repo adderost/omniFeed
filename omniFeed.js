@@ -7,6 +7,8 @@ window.onload = function(){
 		this.container = container;
 		this.articleTemplate;
 		this.height = 0;
+		this.transitionTime = 0;
+		this.margin = 0;
 		this.templateHeight = 0;
 		this.articles = Array();
 
@@ -16,9 +18,17 @@ window.onload = function(){
 			/*Get the template from dom*/
 			var articleTemplate = this.self.container.getElementsByTagName('article').item(0); 
 			this.self.templateHeight = articleTemplate.offsetHeight;
+			this.self.transitionTime = articleTemplate.style.getPropertyValue('transition-duration');
+
+			var duration = window.getComputedStyle(articleTemplate).getPropertyValue('transition-duration');
+			this.self.transitionTime = ((duration.indexOf( 'ms' ) >- 1 ) ? parseFloat( duration ) : parseFloat( duration ) * 1000)
+
+			this.self.margin = parseFloat(window.getComputedStyle(articleTemplate).getPropertyValue('margin-bottom'))
 	
 			/*Remove content and set styling on template*/
 			articleTemplate.style.width = articleTemplate.innerWidth+"px";
+			articleTemplate.style.opacity = 0.1;
+			articleTemplate.style.position = "absolute";
 
 			var templateChildren = articleTemplate.children;
 			for(var i=0;i<templateChildren.length;i++){
@@ -33,7 +43,6 @@ window.onload = function(){
 		this.addArticle = function(data){
 			var newArticle = new article(data, this.self.articleTemplate.cloneNode(true));
 			this.articles.push(newArticle);
-
 			this.container.appendChild(newArticle.template);
 		}
 
@@ -50,19 +59,66 @@ window.onload = function(){
 					this.addArticle(feed[i]);
 				}
 			}
+			this.removeDeleted(feed);
 		}
 
+		this.removeDeleted = function(feed){
+			for(var i=0; i<this.articles.length; i++){
+				var found = false;
+				for (var j=0; j<feed.length;j++){
+					if(this.articles[i].id == feed[j]['id']) found=true;
+				}
+				if(!found){
+					this.articles[i].remove();
+					this.articles[i] = false;
+				}
+
+			}
+			var that = this;
+			setTimeout(function(){that.sortAndMoveArticles()}, this.transitionTime);
+		}
+
+		this.sortAndMoveArticles = function(){
+			//Move all articles to new array, remove deleted ones.
+			var cleanArticles = Array();
+			for(var i=0; i<this.articles.length;i++){
+				if(this.articles[i]) cleanArticles.push(this.articles[i]);
+			}
+
+			//Sort the new list
+			cleanArticles.sort(function(a,b){return(a.updated - b.updated)});
+
+			//Move the articles
+			var aggregatedPixels = 0;
+			for(var i=0;i<cleanArticles.length;i++){
+				position = aggregatedPixels + (i*this.margin);
+				aggregatedPixels += cleanArticles[i].height;
+				cleanArticles[i].moveTo(position);
+			}
+
+			this.articles = cleanArticles;
+
+			var that = this;
+			setTimeout(function(){that.showArticles()}, this.transitionTime);
+		}
+
+		this.showArticles = function(){
+			for(i = 0; i<this.articles.length ;i++){
+				this.articles[i].show();
+			}
+		}
 
 		this.setupContainerAndTemplate();
 	}
 
 	//Object to keep track of a single article
-	function article(data, template){
+	function article(data, template, container){
 		this.self = this;
 		this.id = data['id'];
 		this.published = data['published'];
 		this.template = template;
 		this.height = 0;
+		this.yPos = 0;
 
 		this.getContentFromData = function(data){
 			this.self.updated = data['updated'];
@@ -74,12 +130,12 @@ window.onload = function(){
 		}
 
 		this.updateContent = function(data){
+			this.self.height = this.self.template.offsetHeight;
 			if(data.id == this.self.id){
 				if(data.updated > this.self.updated){
 					this.getContentFromData(data);
 					console.log("Updated article \""+this.self.title+"\"");
 				}
-
 				return(true);
 			}
 			else return(false);
@@ -97,13 +153,26 @@ window.onload = function(){
 			if(this.self.author) this.self.template.getElementsByTagName('span').item(0).innerHTML = this.self.author;
 		}
 
+		this.moveTo = function(pos){
+			this.yPos = pos;
+			this.template.style.top=this.yPos+"px";
+		}
+
+		this.show = function(){
+			this.self.template.style.opacity = 1;
+		}
+
+		this.remove = function(){
+			console.log("Removing article \""+this.self.title+"\"");
+			this.template.style.opacity = 0;
+		}
+
 		this.self.getContentFromData(data);
 		console.log("Added new article \""+this.self.title+"\"");
 	}
 
 
 	//HELPER FUNCTIONS
-
 	var customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success.
 		var newXHR = new XMLHttpRequest();
 		newXHR.addEventListener( 'load', callback );
@@ -112,7 +181,7 @@ window.onload = function(){
 	}
 
 	var fetchArticles = function(){
-		customAjax("feed.php?imgWidth=300", function(){containerObj.updateArticles(JSON.parse(this.response))})
+		customAjax("feed.php?imgWidth=300&limit=4", function(){containerObj.updateArticles(JSON.parse(this.response))})
 	}
 
 
