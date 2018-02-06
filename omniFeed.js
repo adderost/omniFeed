@@ -100,7 +100,7 @@ window.onload = function(){
 				position = aggregatedPixels + (i*this.margin);
 				aggregatedPixels += cleanArticles[i].height;
 				cleanArticles[i].moveTo(position);
-				if(aggregatedPixels > this.height) cleanArticles[i].hide();
+				if(aggregatedPixels >= this.height) cleanArticles[i].hide();
 			}
 
 			this.articles = cleanArticles;
