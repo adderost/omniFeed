@@ -15,7 +15,7 @@ html, body{
 
 #omnifeed{
 	background:black;
-	height: 100%;
+	height: calc(100% - 2em);
 	position: relative;
 	margin:1em;
 	overflow: hidden;
@@ -64,7 +64,6 @@ article>div{
 
 article>div>p{
 	margin:0.5em 0;
-	letter-spacing: 1.2;
 }
 
 article>span{

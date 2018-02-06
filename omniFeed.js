@@ -47,6 +47,11 @@ window.onload = function(){
 		this.addArticle = function(data){
 			var newArticle = new article(data, this.self.articleTemplate.cloneNode(true));
 			this.articles.push(newArticle);
+			//We need to sort so that it doesn't appear out of order.
+			this.articles.sort(function(a,b){
+				return(Date.parse(b.updated) - Date.parse(a.updated));
+			});
+
 			this.container.appendChild(newArticle.template);
 		}
 
@@ -160,6 +165,7 @@ window.onload = function(){
 		this.yPos = 0;
 		this.hidden = false;
 		this.removed = false;
+		this.firstTime = true;
 
 		this.getContentFromData = function(data){
 			this.self.updated = data['updated'];
@@ -223,8 +229,11 @@ window.onload = function(){
 		}
 
 		this.show = function(){
-			this.self.template.style.opacity = 1;
-			this.hidden = false;
+			if(!this.firstTime){
+				this.self.template.style.opacity = 1;
+				this.hidden = false;
+			}
+			else this.firstTime = false;
 		}
 
 		this.remove = function(){
