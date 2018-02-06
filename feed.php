@@ -51,7 +51,7 @@
 				$collectionParts=array();
 				$collectionParts[0]="isCollection";
 				foreach($article as $subArticle){
-					$cleanArticle = cleanArticle($subArticle);
+					$cleanArticle = cleanArticle($subArticle,$localParams);
 					if($cleanArticle) $collectionParts[]=$cleanArticle;
 				}
 				return($collectionParts);

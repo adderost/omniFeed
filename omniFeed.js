@@ -202,7 +202,7 @@ window.onload = function(){
 			}
 
 			if(this.self.published) {
-				if(this.self.template.getElementsByTagName('time').length > 0) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.published)));
+				if(this.self.template.getElementsByTagName('time').length > 0) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.updated)));
 			}
 			
 			if(this.self.text) {
