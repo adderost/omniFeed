@@ -11,7 +11,7 @@ window.onload = function(){
 		this.transitionTime = 0;
 		this.margin = 0;
 		this.articles = Array();
-		this.numberOfArticlesToShow = 10;
+		this.numberOfArticlesToShow = 1;
 		this.firstTime=true;
 
 		this.setupContainerAndTemplate = function(){
