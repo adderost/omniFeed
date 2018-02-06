@@ -57,7 +57,9 @@ article>time{
 }
 
 article>div{
-	font-size: 14px;
+	font-size: 15px;
+	line-height: 1.2;
+	
 }
 
 article>div>p{
