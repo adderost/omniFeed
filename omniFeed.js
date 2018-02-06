@@ -73,10 +73,14 @@ window.onload = function(){
 					if(this.articles[i].id == feed[j]['id']) found=true;
 				}
 				if(!found){
-					this.articles[i].remove();
-					this.articles[i] = false;
+					if(this.articles[i].removed) {
+						this.container.removeChild(this.articles[i].template);
+						this.articles[i] = false;
+					}
+					else{
+						this.articles[i].remove();
+					}
 				}
-
 			}
 			var that = this;
 			setTimeout(function(){that.sortAndMoveArticles()}, this.transitionTime);
@@ -92,7 +96,9 @@ window.onload = function(){
 			}
 
 			//Sort the new list
-			cleanArticles.sort(function(a,b){return(a.updated - b.updated)});
+			cleanArticles.sort(function(a,b){
+				return(Date.parse(b.updated) - Date.parse(a.updated));
+			});
 
 			//Move the articles
 			var aggregatedPixels = 0;
@@ -153,6 +159,7 @@ window.onload = function(){
 		this.height = 0;
 		this.yPos = 0;
 		this.hidden = false;
+		this.removed = false;
 
 		this.getContentFromData = function(data){
 			this.self.updated = data['updated'];
@@ -176,15 +183,29 @@ window.onload = function(){
 		}
 
 		this.updateTemplate = function(){
-			if(this.self.image){
-				this.self.template.getElementsByTagName('img').item(0).style.backgroundImage = "url("+this.self.image.url+")";
-				this.self.template.getElementsByTagName('img').item(0).style.display = "block";
+			if(this.self.template.getElementsByTagName('img').length > 0){
+				if(this.self.image){
+					this.self.template.getElementsByTagName('img').item(0).style.backgroundImage = "url("+this.self.image.url+")";
+					this.self.template.getElementsByTagName('img').item(0).style.display = "block";
+				}
+				else this.self.template.getElementsByTagName('img').item(0).style.display = "none";
 			}
-			else this.self.template.getElementsByTagName('img').item(0).style.display = "none";
-			if(this.self.title) this.self.template.getElementsByTagName('h1').item(0).innerHTML = this.self.title;
-			if(this.self.published) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.published)));
-			if(this.self.text) this.self.template.getElementsByTagName('div').item(0).innerHTML = this.self.text;
-			if(this.self.author) this.self.template.getElementsByTagName('span').item(0).innerHTML = this.self.author;
+			
+			if(this.self.title) {
+				if(this.self.template.getElementsByTagName('h1').length >0 ) this.self.template.getElementsByTagName('h1').item(0).innerHTML = this.self.title;
+			}
+
+			if(this.self.published) {
+				if(this.self.template.getElementsByTagName('time').length > 0) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.published)));
+			}
+			
+			if(this.self.text) {
+				if(this.self.template.getElementsByTagName('div').length > 0) this.self.template.getElementsByTagName('div').item(0).innerHTML = this.self.text;
+			}
+			
+			if(this.self.author) {
+				if(this.self.template.getElementsByTagName('span').length > 0) this.self.template.getElementsByTagName('span').item(0).innerHTML = this.self.author;
+			}
 		}
 
 		this.formatTime = function(time){
@@ -209,6 +230,7 @@ window.onload = function(){
 		this.remove = function(){
 			devlog("Removing article \""+this.self.title+"\"");
 			this.hide();
+			this.removed = true;
 		}
 
 		this.hide = function(){
