@@ -115,6 +115,7 @@ window.onload = function(){
 					if( ( this.articles[i].yPos+this.articles[i].height) < this.self.height ){
 						this.articles[i].show();	
 					} 
+					else this.articles[i].hide();
 					if( this.articles[i].yPos > this.self.height ){
 						this.numberOfArticlesToShow=i
 						break;
