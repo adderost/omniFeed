@@ -1,42 +1,53 @@
 window.onload = function(){
-	var container = document.getElementById('omnifeed');
-	container.innerHTML = "";
 
-	var articles = Array();
+	//Object to keep track of the container and updates
+	function feedContainer(container){
+		this.self = this;
+		this.container = container;
+		this.height = 0;
+		this.articles = Array();
 
-	var addArticle = function(data){
-		articles.push(new article(data));
-	}
+		this.setupContainer = function(){
+			//this.self.container.innerHTML="";
+			this.self.height = container.clientHeight
+			console.log(this.self.height);
+		}
 
-	var updateArticles = function(feed){
-		for(i=0;i<feed.length;i++){
-			var exists = false;
-			for(j=0; j<articles.length; j++){
-				if(articles[j].updateContent(feed[i])){
-					exists = true;
-					break;
+		this.addArticle = function(data){
+			this.articles.push(new article(data));
+		}
+
+		this.updateArticles = function(feed){
+			for(i=0;i<feed.length;i++){
+				var exists = false;
+				for(j=0; j<this.articles.length; j++){
+					if(this.articles[j].updateContent(feed[i])){
+						exists = true;
+						break;
+					}
+				}
+				if(!exists){
+					this.addArticle(feed[i]);
 				}
 			}
-			if(!exists){
-				addArticle(feed[i]);
-			}
 		}
+
+		this.fetchArticles = function(){
+			customAjax("feed.php", function(){this.updateArticles(JSON.parse(this.response))})
+		}
+
+		this.customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success.
+			var newXHR = new XMLHttpRequest();
+			newXHR.addEventListener( 'load', callback );
+			newXHR.open( 'GET', url );
+			newXHR.send();
+		}
+
+
+		this.setupContainer();
 	}
 
-	var fetchArticles = function(){
-		customAjax("feed.php", function(){updateArticles(JSON.parse(this.response))})
-	}
-
-	var customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success.
-		var newXHR = new XMLHttpRequest();
-		newXHR.addEventListener( 'load', callback );
-		newXHR.open( 'GET', url );
-		newXHR.send();
-	}
-	
-	window.setInterval(fetchArticles, 2000);
-
-
+	//Object to keep track of a single article
 	function article(data){
 		this.self = this;
 		this.id = data['id'];
@@ -65,4 +76,7 @@ window.onload = function(){
 		this.self.getContentFromData(data);
 		console.log("Added new article \""+this.self.title+"\"");
 	}
+
+	var container = document.getElementById('omnifeed');
+	var containerObj = new feedContainer(container);
 }

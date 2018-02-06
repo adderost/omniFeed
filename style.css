@@ -1,0 +1,60 @@
+html, body{
+	background: black;
+	color: white;
+	font-family: "Helvetica", arial, sans-serif;
+}
+
+#omnifeed{
+	background:black;
+	height: 720px;
+}
+
+
+article{
+	border:2px solid white;
+	border-radius: 5px;
+	margin:1em;
+	padding:7px 14px;
+	position: relative;
+}
+
+article>img{
+	border:2px white;
+	border-radius: 2px;
+	margin:5px;
+	float:right;
+	width: 150px;
+	height: 150px;
+	background: gray;
+}
+
+article>h1{
+	margin:0;
+	font-size: 32px;
+	line-height: 1;
+}
+
+article>time{
+	font-size: 10px;
+	line-height: 0.8;
+}
+
+article>div{
+	font-size: 14px;
+}
+
+article>div>p{
+	margin:0.5em 0;
+}
+
+article>span{
+	font-size: 10px;
+	margin-top: 1em;
+
+}
+
+article:after{
+	display: block;
+	content:" ";
+	clear:both;
+}
