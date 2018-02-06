@@ -27,7 +27,7 @@ window.onload = function(){
 	
 			/*Remove content and set styling on template*/
 			articleTemplate.style.width = articleTemplate.innerWidth+"px";
-			articleTemplate.style.opacity = 0.1;
+			articleTemplate.style.opacity = 0;
 			articleTemplate.style.position = "absolute";
 
 			var templateChildren = articleTemplate.children;
@@ -38,6 +38,9 @@ window.onload = function(){
 			/*Remove the template from DOM */
 			this.self.container.removeChild(articleTemplate);
 			this.self.articleTemplate = articleTemplate;
+
+			var that = this;
+			window.setTimeout(function(){that.fetchArticles();}, 0);
 		}
 
 		this.addArticle = function(data){
@@ -94,6 +97,7 @@ window.onload = function(){
 				position = aggregatedPixels + (i*this.margin);
 				aggregatedPixels += cleanArticles[i].height;
 				cleanArticles[i].moveTo(position);
+				if(aggregatedPixels > this.height) cleanArticles[i].hide();
 			}
 
 			this.articles = cleanArticles;
@@ -104,8 +108,22 @@ window.onload = function(){
 
 		this.showArticles = function(){
 			for(i = 0; i<this.articles.length ;i++){
-				this.articles[i].show();
+				if( ( this.articles[i].yPos+this.articles[i].height) < this.self.height ) this.articles[i].show();
 			}
+			var that = this;
+			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*2));
+		}
+
+		this.customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success.
+			var newXHR = new XMLHttpRequest();
+			newXHR.addEventListener( 'load', callback );
+			newXHR.open( 'GET', url );
+			newXHR.send();
+		}
+
+		this.fetchArticles = function(){
+			var that = this;
+			this.customAjax("feed.php?imgWidth=300&limit=4", function(){that.updateArticles(JSON.parse(this.response))})
 		}
 
 		this.setupContainerAndTemplate();
@@ -119,6 +137,7 @@ window.onload = function(){
 		this.template = template;
 		this.height = 0;
 		this.yPos = 0;
+		this.hidden = false;
 
 		this.getContentFromData = function(data){
 			this.self.updated = data['updated'];
@@ -164,6 +183,10 @@ window.onload = function(){
 
 		this.remove = function(){
 			console.log("Removing article \""+this.self.title+"\"");
+			this.hide();
+		}
+
+		this.hide = function(){
 			this.template.style.opacity = 0;
 		}
 
@@ -173,20 +196,11 @@ window.onload = function(){
 
 
 	//HELPER FUNCTIONS
-	var customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success.
-		var newXHR = new XMLHttpRequest();
-		newXHR.addEventListener( 'load', callback );
-		newXHR.open( 'GET', url );
-		newXHR.send();
-	}
-
-	var fetchArticles = function(){
-		customAjax("feed.php?imgWidth=300&limit=4", function(){containerObj.updateArticles(JSON.parse(this.response))})
-	}
+	
 
 
 	var container = document.getElementById('omnifeed');
 	var containerObj = new feedContainer(container);
 
-	window.setInterval(fetchArticles, 2000);
+	
 }

@@ -26,7 +26,6 @@
 	$remoteParams = array_key_merge_deceze($defaults, $_GET);
 	$localParams = array_key_merge_deceze($localDefaults, $_GET);
 	$articledata = json_decode(file_get_contents($feedUrl."?".http_build_query($feedparams)))->articles;
-	error_log($feedUrl."?".http_build_query($feedparams));
 	$cleanArticles = array();
 
 	foreach($articledata as $article){
