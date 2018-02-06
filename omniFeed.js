@@ -7,22 +7,23 @@ window.onload = function(){
 		this.container = container;
 		this.articleTemplate;
 		this.height = 0;
+		this.imageWidth=0;
 		this.transitionTime = 0;
 		this.margin = 0;
-		this.templateHeight = 0;
 		this.articles = Array();
+		this.numberOfArticlesToShow = 10;
+		this.firstTime=true;
 
 		this.setupContainerAndTemplate = function(){
-			this.self.height = this.self.container.clientHeight //Setup height of feed
+			
 			this.self.position = "relative";
 			/*Get the template from dom*/
 			var articleTemplate = this.self.container.getElementsByTagName('article').item(0); 
-			this.self.templateHeight = articleTemplate.offsetHeight;
 			this.self.transitionTime = articleTemplate.style.getPropertyValue('transition-duration');
 
 			var duration = window.getComputedStyle(articleTemplate).getPropertyValue('transition-duration');
 			this.self.transitionTime = ((duration.indexOf( 'ms' ) >- 1 ) ? parseFloat( duration ) : parseFloat( duration ) * 1000)
-
+			this.self.imageWidth = parseFloat(window.getComputedStyle(articleTemplate.getElementsByTagName('img').item(0)).getPropertyValue("width"));
 			this.self.margin = parseFloat(window.getComputedStyle(articleTemplate).getPropertyValue('margin-bottom'))
 	
 			/*Remove content and set styling on template*/
@@ -82,6 +83,8 @@ window.onload = function(){
 		}
 
 		this.sortAndMoveArticles = function(){
+			this.self.height = this.self.container.clientHeight //Setup height of feed
+			
 			//Move all articles to new array, remove deleted ones.
 			var cleanArticles = Array();
 			for(var i=0; i<this.articles.length;i++){
@@ -107,9 +110,20 @@ window.onload = function(){
 		}
 
 		this.showArticles = function(){
-			for(i = 0; i<this.articles.length ;i++){
-				if( ( this.articles[i].yPos+this.articles[i].height) < this.self.height ) this.articles[i].show();
+			if(!this.firstTime){
+				for(i = 0; i<this.articles.length ;i++){
+					if( ( this.articles[i].yPos+this.articles[i].height) < this.self.height ){
+						this.articles[i].show();	
+					} 
+					if( this.articles[i].yPos > this.self.height ){
+						this.numberOfArticlesToShow=i
+						break;
+					}
+				}
+				if(this.articles[this.articles.length-1].yPos + this.articles[this.articles.length-1].height < this.self.height) this.numberOfArticlesToShow += 1;
 			}
+			else this.firstTime = false;
+
 			var that = this;
 			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*2));
 		}
@@ -123,7 +137,7 @@ window.onload = function(){
 
 		this.fetchArticles = function(){
 			var that = this;
-			this.customAjax("feed.php?imgWidth=300&limit=4", function(){that.updateArticles(JSON.parse(this.response))})
+			this.customAjax("feed.php?imgWidth="+(this.imageWidth*2)+"&limit="+this.numberOfArticlesToShow, function(){that.updateArticles(JSON.parse(this.response))})
 		}
 
 		this.setupContainerAndTemplate();
@@ -188,6 +202,7 @@ window.onload = function(){
 
 		this.show = function(){
 			this.self.template.style.opacity = 1;
+			this.hidden = false;
 		}
 
 		this.remove = function(){
@@ -197,6 +212,7 @@ window.onload = function(){
 
 		this.hide = function(){
 			this.template.style.opacity = 0;
+			this.hidden = true;
 		}
 
 		this.self.getContentFromData(data);

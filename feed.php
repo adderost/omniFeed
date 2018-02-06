@@ -70,7 +70,12 @@
 			$newArticle['updated'] = $content->meta->changes->updated;
 			foreach($content->resources as $resource){
 				if($resource->type == "Title")  $newArticle['title'] = $resource->text->value;
-				if($resource->type == "Text"){ foreach($resource->paragraphs as $paragraph){ if(!isset($newArticle['text'])) $newArticle['text'] = ""; $newArticle['text'].="<p>".$paragraph->text->value."</p>"; } }
+				if($resource->type == "Text"){ 
+					foreach($resource->paragraphs as $paragraph){ 
+						if(!isset($newArticle['text'])) $newArticle['text'] = ""; 
+						if(isset($paragraph->text)) $newArticle['text'].="<p>".$paragraph->text->value."</p>"; 
+					} 
+				}
 				if($resource->type == "Image") $newArticle['image'] = array('title'=> ((isset($resource->caption)) ? $resource->caption->value : ""), 'url' => $localParams['imgBaseUrl'].$resource->image_asset->id."?w=".$localParams['imgWidth']);
 			}
 
