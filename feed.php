@@ -15,7 +15,7 @@
 		"offset" 			=> 0,
 		"sort" 				=> 'latest'	//latest || newsmix
 	);
-	$feedparams = array_merge($defaults, $_GET);
+	$feedparams = array_key_merge_deceze($defaults, $_GET);
 
 	$localDefaults = array(
 		"showAds"			=> false,
@@ -25,8 +25,8 @@
 	);
 	$remoteParams = array_key_merge_deceze($defaults, $_GET);
 	$localParams = array_key_merge_deceze($localDefaults, $_GET);
-	$articledata = json_decode(file_get_contents($feedUrl."?".http_build_query($defaults)))->articles;
-
+	$articledata = json_decode(file_get_contents($feedUrl."?".http_build_query($feedparams)))->articles;
+	error_log($feedUrl."?".http_build_query($feedparams));
 	$cleanArticles = array();
 
 	foreach($articledata as $article){
