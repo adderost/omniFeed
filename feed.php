@@ -19,7 +19,7 @@
 
 	$localDefaults = array(
 		"showAds"			=> false,
-		"breakCollections" 	=> false,
+		"breakCollections" 	=> true,
 		"imgWidth" 			=> 640,
 		'imgBaseUrl' 		=> "http://gfx.omni.se/images/"
 	);
@@ -31,7 +31,13 @@
 
 	foreach($articledata as $article){
 		$cleanArticle = cleanArticle($article, $localParams);
-		if($cleanArticle) $cleanArticles[] = $cleanArticle;
+		if($cleanArticle) {
+			if(isset($cleanArticle[0])){
+				if($cleanArticle[0]=="isCollection") for($i=1;$i<sizeof($cleanArticle);$i++) $cleanArticles[] = $cleanArticle[$i];
+				else $cleanArticles[] = $cleanArticle;
+			}
+			else $cleanArticles[] = $cleanArticle;
+		}
 	}
 	$data = json_encode($cleanArticles);
 	file_put_contents($cachePath, $data);
@@ -44,6 +50,7 @@
 		if(sizeof($article) > 1){ //This is a collection
 			if($localParams['breakCollections']){
 				$collectionParts=array();
+				$collectionParts[0]="isCollection";
 				foreach($article as $subArticle){
 					$cleanArticle = cleanArticle($subArticle);
 					if($cleanArticle) $collectionParts[]=$cleanArticle;
