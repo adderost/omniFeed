@@ -49,7 +49,7 @@ window.onload = function(){
 
 			//Now sort the list, sometimes we get articles out of order
 			this.articles.sort(function(a,b){
-				return(Date.parse(b.updated) - Date.parse(a.updated));
+				return(Date.parse(b.published) - Date.parse(a.published));
 			});
 
 			//Lastly, we add the created object to the DOM so that it can be displayed
@@ -108,7 +108,7 @@ window.onload = function(){
 
 			//Sort the new list
 			cleanArticles.sort(function(a,b){
-				return(Date.parse(b.updated) - Date.parse(a.updated));
+				return(Date.parse(b.published) - Date.parse(a.published));
 			});
 
 			//Move the articles to their correct Y-position. It should be the height of all previous articles plus the margin between them.
@@ -214,7 +214,7 @@ window.onload = function(){
 			}
 
 			if(this.self.published) {
-				if(this.self.template.getElementsByTagName('time').length > 0) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.updated)));
+				if(this.self.template.getElementsByTagName('time').length > 0) this.self.template.getElementsByTagName('time').item(0).innerHTML = this.formatTime(new Date(Date.parse(this.self.published)));
 			}
 			
 			if(this.self.text) {
