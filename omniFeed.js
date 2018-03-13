@@ -8,7 +8,7 @@ window.onload = function(){
 		this.height = 0;
 		this.imageWidth=0;
 		this.transitionTime = 0;
-		this.margin = 0;
+		this.minimumMargin = 0;
 		this.articles = Array();
 		this.numberOfArticlesToShow = 1;
 		this.firstTime=true;
@@ -21,7 +21,7 @@ window.onload = function(){
 			var duration = window.getComputedStyle(articleTemplate).getPropertyValue('transition-duration');
 			this.self.transitionTime = Math.max(((duration.indexOf( 'ms' ) >- 1 ) ? parseFloat( duration ) : parseFloat( duration ) * 1000), 200);
 			this.self.imageWidth = parseFloat(window.getComputedStyle(articleTemplate.getElementsByTagName('img').item(0)).getPropertyValue("width"));
-			this.self.margin = parseFloat(window.getComputedStyle(articleTemplate).getPropertyValue('margin-bottom'))
+			this.self.minimumMargin = parseFloat(window.getComputedStyle(articleTemplate).getPropertyValue('margin-bottom'))
 	
 			/*Remove content and set styling on template and container*/
 			this.self.container.style.position="relative";
@@ -111,16 +111,32 @@ window.onload = function(){
 				return(Date.parse(b.published) - Date.parse(a.published));
 			});
 
-			//Move the articles to their correct Y-position. It should be the height of all previous articles plus the margin between them.
+			//How many articles can we fit?
+			var visibleArticles = 0;
 			var aggregatedPixels = 0;
 			for(var i=0;i<cleanArticles.length;i++){
-				position = aggregatedPixels + (i*this.margin);
-				aggregatedPixels += cleanArticles[i].height;
-				cleanArticles[i].moveTo(position);
-
-				//If we're putting articles outside of the container, just hide them. (Animated)
-				if(aggregatedPixels >= this.height) cleanArticles[i].hide();
+				
+				//Check if we can add the next article with the minimum margin. If it fits, it's added
+				if((aggregatedPixels + cleanArticles[i].height + (this.minimumMargin*(i+1))) >= this.height){
+					cleanArticles[i].hide();
+				}
+				else{
+					aggregatedPixels += cleanArticles[i].height;
+					visibleArticles++;
+				} 
 			}
+			
+			//Calculate the margin we're using to vertically center everything
+			var optimalMargin = Math.floor((this.height - aggregatedPixels) / (visibleArticles+1));
+			aggregatedPixels = 0;
+
+			//When we have the margin, we actually position the articles
+			for(var i=0; i<cleanArticles.length;i++){
+				position = aggregatedPixels+optimalMargin;
+				aggregatedPixels += cleanArticles[i].height+optimalMargin;
+				cleanArticles[i].moveTo(position);
+			}
+
 
 			//Set the queue to our new orderded and filtered list.
 			this.articles = cleanArticles;
@@ -151,7 +167,7 @@ window.onload = function(){
 			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*2));
 		}
 
-		this.customAjax = function(url, callback = function(){}){	//Send getrequest and call the callback on success. Just standard XHR-request
+		this.customAjax = function(url, callback){	//Send getrequest and call the callback on success. Just standard XHR-request
 			var newXHR = new XMLHttpRequest();
 			newXHR.addEventListener( 'load', callback );
 			newXHR.open( 'GET', url );
