@@ -59,27 +59,31 @@
 			return($article);
 		}	
 		
-		$content = $article[0];
-		$newArticle=array();
-		if($content->type == "Article"){
-			if($content->meta->is_sponsored && !$localParams['showAds']) return(false);
-			$newArticle['id'] = $content->article_id;
-			$newArticle['authors'] = $content->authors[0]->title;
-			if(sizeof($content->authors) > 1 ){ for($i=1; $i<sizeof($content->authors); $i++) {$newArticle['authors'].=", ".$content->authors[$i]->title; } }
-			$newArticle['published'] = $content->meta->changes->published;
-			$newArticle['updated'] = $content->meta->changes->updated;
-			foreach($content->resources as $resource){
-				if($resource->type == "Title")  $newArticle['title'] = $resource->text->value;
-				if($resource->type == "Text"){ 
-					foreach($resource->paragraphs as $paragraph){ 
-						if(!isset($newArticle['text'])) $newArticle['text'] = ""; 
-						if(isset($paragraph->text)) $newArticle['text'].="<p>".$paragraph->text->value."</p>"; 
-					} 
+		if(is_array($article)){
+			$content = $article[0];
+			$newArticle=array();
+			
+			if($content->type == "Article"){
+				if($content->meta->is_sponsored && !$localParams['showAds']) return(false);
+				$newArticle['id'] = $content->article_id;
+				$newArticle['authors'] = $content->authors[0]->title;
+				if(sizeof($content->authors) > 1 ){ for($i=1; $i<sizeof($content->authors); $i++) {$newArticle['authors'].=", ".$content->authors[$i]->title; } }
+				$newArticle['published'] = $content->meta->changes->published;
+				$newArticle['updated'] = $content->meta->changes->updated;
+				foreach($content->resources as $resource){
+					if($resource->type == "Title")  $newArticle['title'] = $resource->text->value;
+					if($resource->type == "Text"){ 
+						foreach($resource->paragraphs as $paragraph){ 
+							if(!isset($newArticle['text'])) $newArticle['text'] = ""; 
+							if(isset($paragraph->text)) $newArticle['text'].="<p>".$paragraph->text->value."</p>"; 
+						} 
+					}
+					if($resource->type == "Image") $newArticle['image'] = array('title'=> ((isset($resource->caption)) ? $resource->caption->value : ""), 'url' => $localParams['imgBaseUrl'].$resource->image_asset->id."?w=".$localParams['imgWidth']);
 				}
-				if($resource->type == "Image") $newArticle['image'] = array('title'=> ((isset($resource->caption)) ? $resource->caption->value : ""), 'url' => $localParams['imgBaseUrl'].$resource->image_asset->id."?w=".$localParams['imgWidth']);
-			}
 
-			return($newArticle);
+				return($newArticle);
+			}
+			else return(false);
 		}
 		else return(false);
 	}
