@@ -1,6 +1,7 @@
 <?php
 	$feedUrl  = "https://omni-content.omni.news/articles";
-	$cachePath = "cache/feed".http_build_query($_GET);
+	$cacheString = hash("sha256",http_build_query($_GET));
+	$cachePath = "cache/feed_".$cacheString;
 
 	if(file_exists($cachePath)){
 		if(filemtime($cachePath) > time()-30 ){
@@ -62,7 +63,7 @@
 		if(is_array($article)){
 			$content = $article[0];
 			$newArticle=array();
-			
+
 			if($content->type == "Article"){
 				if($content->meta->is_sponsored && !$localParams['showAds']) return(false);
 				$newArticle['id'] = $content->article_id;
