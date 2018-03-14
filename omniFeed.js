@@ -1,7 +1,9 @@
+'use strict';
 window.onload = function(){
 
 	//Object to keep track of the container and updates
 	function feedContainer(container){
+		//Variables used by the object
 		this.self = this;
 		this.container = container;
 		this.articleTemplate;
@@ -12,7 +14,35 @@ window.onload = function(){
 		this.articles = Array();
 		this.numberOfArticlesToShow = 1;
 		this.firstTime=true;
+		this.XHR;
 
+		//Helper functions
+		this.customAjax = function(url, callback){	//Send getrequest and call the callback on success. Just standard XHR-request, which reuses the XHR-Object for subsequent requests
+			if(!this.XHR){
+				this.XHR = new XMLHttpRequest();
+				this.XHR.addEventListener( 'load', callback );
+			}
+			this.XHR.open( 'GET', url );
+			this.XHR.send();
+		}
+
+		this.fetchArticles = function(){	//Fetch the feed, with some queryvars that tailors the feed to our needs.
+			var that = this;
+			this.customAjax("feed.php?imgWidth="+(this.imageWidth*2)+"&limit="+this.numberOfArticlesToShow, function(){that.updateArticles(this.response)})
+		}
+
+		var devtools = /./;	//This is used to see if we have an open console, so that we don't spam unnecessarily
+		devtools.toString = function() {
+			this.opened = true;
+		}
+		function devlog(msg){
+			if(devtools){
+				console.log(msg);
+			}
+		}
+
+
+		//This is run on init, sets up the template, variables and starts the main loop
 		this.setupContainerAndTemplate = function(){
 			/*Get the template from dom */
 			var articleTemplate = this.self.container.getElementsByTagName('article').item(0); 
@@ -56,34 +86,17 @@ window.onload = function(){
 			this.container.appendChild(newArticle.template);
 		}
 
-		this.updateArticles = function(feed){ //Iterate through the newly fetched feed and update content on existing articles, or add new article if it's not already there.
-			for(i=0;i<feed.length;i++){
-				var exists = false;
-				for(j=0; j<this.articles.length; j++){
-					if(this.articles[j].updateContent(feed[i])){
-						exists = true;
-						break;
-					}
-				}
-				if(!exists){
-					this.addArticle(feed[i]);
-				}
-			}
-
-			//After all this we remove the ones we don't use anymore. Memory management and so on
-			this.removeDeleted(feed);
-		}
-
-		this.removeDeleted = function(feed){	//Checks for articles in display queue that are not in the feed. If they're removed from the feed they're marked for removal in queue too.
+		this.removeArticles = function(feed){	//Checks for articles in display queue that are not in the feed. If they're removed from the feed they're marked for removal in queue too.
 			for(var i=0; i<this.articles.length; i++){
 				var found = false;
-				for (var j=0; j<feed.length;j++){
+				for(var j=0; j<feed.length;j++){
 					if(this.articles[i].id == feed[j]['id']) found=true;
 				}
 				if(!found){	//First mark for removal, next cycle actually remove it. This is to allow object to gracefully animate
 					if(this.articles[i].removed) {
 						this.container.removeChild(this.articles[i].template);
-						this.articles[i] = false;
+						this.articles[i].remove();	//Remove the second time to clear DOM references in object
+						this.articles[i] = null;
 					}
 					else{
 						this.articles[i].remove();
@@ -95,6 +108,26 @@ window.onload = function(){
 			//After deletion of articles we should move and sort the ones that are left
 			var that = this;
 			setTimeout(function(){that.sortAndMoveArticles()}, this.transitionTime);
+		}
+
+		this.updateArticles = function(result){ //Iterate through the newly fetched feed and update content on existing articles, or add new article if it's not already there.
+			var feed = JSON.parse(result);
+
+			for(var i=0;i<feed.length;i++){
+				var exists = false;
+				for(var j=0; j<this.articles.length; j++){
+					if(this.articles[j].updateContent(feed[i])){
+						exists = true;
+						break;
+					}
+				}
+				if(!exists){
+					this.addArticle(feed[i]);
+				}
+			}
+
+			//After all this we remove the ones we don't use anymore. Memory management and so on
+			this.removeArticles(feed);
 		}
 
 		this.sortAndMoveArticles = function(){	//Sorts the articles in the queue according to update-time. Then tells them to update their position, this will probably animate.
@@ -132,7 +165,7 @@ window.onload = function(){
 
 			//When we have the margin, we actually position the articles
 			for(var i=0; i<cleanArticles.length;i++){
-				position = aggregatedPixels+optimalMargin;
+				var position = aggregatedPixels+optimalMargin;
 				aggregatedPixels += cleanArticles[i].height+optimalMargin;
 				cleanArticles[i].moveTo(position);
 			}
@@ -148,7 +181,7 @@ window.onload = function(){
 
 		this.showArticles = function(){ //Checks all articles to see wich ones that are hidden that should actually be shown. Every other article will have moved to it's correct place so we can just fade them in now.
 			if(!this.firstTime){	//We wait until cycle 2 so that we actually know the heights of articles...
-				for(i = 0; i<this.articles.length ;i++){
+				for(var i = 0; i<this.articles.length ;i++){
 					if( ( this.articles[i].yPos+this.articles[i].height) < this.self.height ){	//If the whole article fits in the container, show it!
 						this.articles[i].show();	
 					} 
@@ -165,18 +198,6 @@ window.onload = function(){
 			//Now we're waiting until animations finish and then some more. Before we fetch the feed again and start a new cycle.
 			var that = this;
 			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*2));
-		}
-
-		this.customAjax = function(url, callback){	//Send getrequest and call the callback on success. Just standard XHR-request
-			var newXHR = new XMLHttpRequest();
-			newXHR.addEventListener( 'load', callback );
-			newXHR.open( 'GET', url );
-			newXHR.send();
-		}
-
-		this.fetchArticles = function(){	//Fetch the feed, with some queryvars that tailors the feed to our needs.
-			var that = this;
-			this.customAjax("feed.php?imgWidth="+(this.imageWidth*2)+"&limit="+this.numberOfArticlesToShow, function(){that.updateArticles(JSON.parse(this.response))})
 		}
 
 		//This is run first, when the container object is created. Automagically!
@@ -208,7 +229,7 @@ window.onload = function(){
 			this.self.height = this.self.template.offsetHeight;
 			if(data.id == this.self.id){
 				if(data.updated > this.self.updated){
-					this.getContentFromData(data);
+					this.self.getContentFromData(data);
 					devlog("Updated article \""+this.self.title+"\"");
 				}
 				return(true);
@@ -252,22 +273,31 @@ window.onload = function(){
 		}
 
 		this.moveTo = function(pos){	//Get a new postition from the container cycle. Add it to our template CSS and let the animation happen
-			this.yPos = pos;
-			this.template.style.top=this.yPos+"px";
+			if(!this.removed){
+				this.self.yPos = pos;
+				this.self.template.style.top=this.yPos+"px";
+			}
 		}
 
 		this.show = function(){			//If we are hidden, we might stop being hidden, if we're not newly created... in that case we wait one cycle.
-			if(!this.firstTime){
+			if(!this.self.firstTime){
 				this.self.template.style.opacity = 1;
-				this.hidden = false;
+				this.self.hidden = false;
 			}
-			else this.firstTime = false;
+			else this.self.firstTime = false;
 		}
 
 		this.remove = function(){		//First it hides us... then next cycle we are marked for removal and will be deleted by the container
-			devlog("Removing article \""+this.self.title+"\"");
-			this.hide();
-			this.removed = true;
+			if(!this.self.removed) {
+				devlog("Removing article from view: \""+this.self.title+"\"");
+				this.self.hide();
+				this.self.removed = true;
+			}
+			else{//Stuff to make sure the Garbage Collector actually removes things. Will run on cycle after first removal
+				devlog("Removing article from memory: \""+this.self.title+"\"");
+				this.self.template = null;
+				this.self = null;
+			}
 		}
 
 		this.hide = function(){			//Hides us... with opacity... Animated
@@ -278,18 +308,6 @@ window.onload = function(){
 		//When we are created, we fetch our data and log to console that we are created. 
 		this.self.getContentFromData(data);	
 		devlog("Added new article \""+this.self.title+"\"");
-	}
-
-
-	//HELPER FUNCTIONS
-	var devtools = /./;	//This is used to see if we have an open console, so that we don't spam unnecessarily
-	devtools.toString = function() {
-	  this.opened = true;
-	}
-	function devlog(msg){
-		if(devtools){
-			console.log(msg);
-		}
 	}
 
 	//When page is loaded. Get the container by ID and create the container object with that element... AND WE'RE LIVE!
