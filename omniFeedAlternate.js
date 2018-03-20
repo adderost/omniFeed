@@ -19,10 +19,13 @@ window.onload = function(){
 			self.articles 				= Array();
 			self.deadArticles 			= Array();
 
+			self.articleTemplate.style.position = "absolute";
+			self.articleTemplate.style.opacity = 0;
+
 			//Lastly, remove the template from DOM and start fetching content asynchronously
 			self.container.removeChild(self.articleTemplate);
 
-			//This starts the main loop of Fetch->Parse->Position->Remove->Add
+			//This starts the main loop of Fetch->Parse->Remove->Position->Add
 			window.setTimeout(function(){self.fetchArticles();}, 0);
 		},
 
@@ -49,12 +52,38 @@ window.onload = function(){
 				if(!exists){ self.addArticle(element); }
 			});
 
-			//Next step is positioning the articles
-			window.setTimeout(function(){self.positionArticles(feed);}, self.transitionTime);
+			//The rest of the cycle
+			window.setTimeout(function(){self.removeArticles(feed);}, self.transitionTime);
+			window.setTimeout(function(){self.positionArticles();}, self.transitionTime*2);
+			window.setTimeout(function(){self.showArticles();}, self.transitionTime*3);
+			window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*8);
+		},
+
+		removeArticles: function(feed){
+			var self = this;
+			var articlesToPurge = Array();
+			self.articles.forEach(function(article, index){
+				if(article.removed){
+					articlesToPurge.push(index);
+				}
+
+				var found = false;
+				feed.forEach(function(feedArticle){
+					if(article.id == feedArticle.id){found = true}
+				});
+				if(!found){
+					article.remove();
+				}
+			});
+
+			articlesToPurge.reverse().forEach(function(index){
+				self.deadArticles.push(self.articles.splice(index, 1)[0]);
+			});
+
 		},
 
 		//Positions the articles in the container
-		positionArticles: function(feed){
+		positionArticles: function(){
 			var self = this;
 			var containerHeight = self.container.clientHeight;
 			var visibleArticles = 0;
@@ -65,7 +94,7 @@ window.onload = function(){
 			self.articles.sort(function(a,b){return(Date.parse(b.published) - Date.parse(a.published));});
 			self.articles.forEach(function(article){
 				if(!article.removed){
-					if((aggregatedHeight + article.height + (self.minimumMargin*(visibleArticles+1))) < containerHeight){
+					if( ( (aggregatedHeight + article.height) + (self.minimumMargin * (visibleArticles+1) ) ) < containerHeight){
 						aggregatedHeight += article.height;
 						visibleArticles++;
 					}
@@ -75,30 +104,30 @@ window.onload = function(){
 				}
 			});
 
+			self.numberOfArticlesToShow = visibleArticles+1;
+			optimalMargin = Math.round( (containerHeight - aggregatedHeight) / (visibleArticles + 1) );
 			//Then we calculate margin and position objects
-			optimalMargin = Math.floor((containerHeight - aggregatedHeight) / (visibleArticles+1));
-			aggregatedHeight = 0;
-			
-			self.articles.forEach(function(article){
-				if(!article.hidden){
-					article.moveTo(aggregatedHeight+optimalMargin);
-					aggregatedHeight += aggregatedHeight+optimalMargin+article.height;
+			aggregatedHeight = optimalMargin;
+			for(var i = 0; i<self.articles.length; i++){
+				if(!self.articles[i].removed){
+					self.articles[i].moveTo(aggregatedHeight);
+					aggregatedHeight += self.articles[i].height + optimalMargin;
 				}
-			});
-
-			//Next step is removing stuff
-			window.setTimeout(function(){self.removeArticles(feed);}, self.transitionTime);
+			}
+			//Next step is showing stuff
 		},
 
-		removeArticles: function(feed){
+		showArticles: function(){
 			var self = this;
+			var containerHeight = self.container.clientHeight;
 			self.articles.forEach(function(article){
-				var found = false;
-				feed.forEach(function(feedArticle){
-					if(article.id == feedArticle.id){found = true}
-				});
-				if(!found){
-					article.remove();
+				if(!article.removed){
+					if( (article.position + article.height) < containerHeight ){
+						article.show();
+					}
+					else{
+						article.hide();
+					}
 				}
 			});
 		},
@@ -111,8 +140,10 @@ window.onload = function(){
 			var newArticle = null;
 			if(self.deadArticles.length){
 				newArticle = self.deadArticles.shift();
-				newArticle.getContentFromData(data);
-				console.log("Reusing articleObject");
+				if(!newArticle.updateContent(data)){
+					newArticle.getContentFromData(data, newArticle);
+					console.log("Reusing articleObject");
+				}
 			}
 			else{ newArticle = new articleObject(data, self.articleTemplate.cloneNode(true)); }
 
@@ -135,13 +166,14 @@ window.onload = function(){
 			self.hidden = false;
 			self.removed = false;
 			self.inited = false;
+			self.hide();
 		}
 
 		self.updateContent = function (data){
 			var self = this;
 
 			if(self.id == data.id){
-				getContentFromData(data, self);
+				self.getContentFromData(data, self);
 				self.height = self.DOM.offsetHeight;
 				return(true);
 			}
@@ -150,7 +182,7 @@ window.onload = function(){
 			}
 		};
 
-		function getContentFromData(data, self){
+		self.getContentFromData = function(data, self){
 			self.id = data.id;
 			self.published = data.published;
 			self.author = data.authors;
@@ -185,6 +217,12 @@ window.onload = function(){
 			self.DOM.style.top=position+"px";
 		};
 
+		this.remove = function(){
+			var self = this;
+			self.hide();
+			self.removed=true;
+		};
+
 		this.hide = function(){
 			var self = this;
 			self.hidden = true;
@@ -193,13 +231,20 @@ window.onload = function(){
 
 		this.show = function(){
 			var self = this;
-			self.hidden = false;
-			self.DOM.style.opacity=1;
+			if(!self.removed){
+				if(self.inited){
+					self.hidden = false;
+					self.DOM.style.opacity=1;
+				}
+				else{
+					self.inited = true;
+				}
+			}
 		};
 
 		//Init default variables and get content
 		init(self);
-		getContentFromData(data, self);
+		self.getContentFromData(data, self);
 	}
 
 	feedHandler.setup(document.getElementById("omnifeed"));
