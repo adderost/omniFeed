@@ -15,7 +15,7 @@ window.onload = function(){
 			self.transitionTime 		=  Math.max(((self.transitionTime.indexOf( "ms" ) >- 1 ) ? parseFloat( self.transitionTime ) : parseFloat( self.transitionTime ) * 1000), 200);
 			self.imageWidth 			= parseFloat(window.getComputedStyle(self.articleTemplate.getElementsByTagName("img").item(0)).getPropertyValue("width"));
 			self.minimumMargin 			= parseFloat(window.getComputedStyle(self.articleTemplate).getPropertyValue("margin-bottom"));
-			self.numberOfArticlesToShow	= 1;
+			self.numberOfArticlesToFetch= 1;
 			self.articles 				= Array();
 			self.deadArticles 			= Array();
 
@@ -36,7 +36,7 @@ window.onload = function(){
 				self.XHR = new XMLHttpRequest();
 				self.XHR.addEventListener( "load", function(){self.parseFeed(this.response);});
 			}
-			self.XHR.open( "GET", "feed.php?imgWidth="+(self.imageWidth*2)+"&limit=" + self.numberOfArticlesToShow );
+			self.XHR.open( "GET", "feed.php?imgWidth="+(self.imageWidth*2)+"&limit=" + self.numberOfArticlesToFetch );
 			self.XHR.send();
 		},
 
@@ -56,7 +56,7 @@ window.onload = function(){
 			window.setTimeout(function(){self.removeArticles(feed);}, self.transitionTime);
 			window.setTimeout(function(){self.positionArticles();}, self.transitionTime*2);
 			window.setTimeout(function(){self.showArticles();}, self.transitionTime*3);
-			window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*8);
+			if(self.articles.length<3) window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*4);
 		},
 
 		removeArticles: function(feed){
@@ -93,7 +93,7 @@ window.onload = function(){
 			//Sort articles, then check how much space they need
 			self.articles.sort(function(a,b){return(Date.parse(b.published) - Date.parse(a.published));});
 			self.articles.forEach(function(article){
-				if(!article.removed){
+				if(!article.removed && article.height > 0){
 					if( ( (aggregatedHeight + article.height) + (self.minimumMargin * (visibleArticles+1) ) ) < containerHeight){
 						aggregatedHeight += article.height;
 						visibleArticles++;
@@ -104,7 +104,7 @@ window.onload = function(){
 				}
 			});
 
-			self.numberOfArticlesToShow = visibleArticles+1;
+			self.numberOfArticlesToFetch = visibleArticles+1;
 			optimalMargin = Math.round( (containerHeight - aggregatedHeight) / (visibleArticles + 1) );
 			//Then we calculate margin and position objects
 			aggregatedHeight = optimalMargin;
@@ -189,27 +189,47 @@ window.onload = function(){
 			self.title = data.title;
 			self.image = data.image;
 			self.text = data.text;
-
-			updateDOM(self);
+			if(data.updated>self.updated){
+				self.updated = data.updated;
+				self.updateDOM(self);
+			}
 		}
 
-		function updateDOM(self){
+		self.updateDOM = function(self){
 			var settings = [
 				{src: "title", trg: "h1", fnc: null},
-				{src: "published", trg: "time", fnc: function(time){return(time);}},
+				{src: "published", trg: "time", fnc: function(time){return({attr: 'innerHTML', value: self.formatTime(new Date(Date.parse(time)))});}},
 				{src: "text", trg: "div", fnc: null},
-				{src: "author", trg: "span", fnc: null}
+				{src: "author", trg: "span", fnc: null},
+				{src: "image", trg: "img", fnc: function(img){console.log(img); return({attr:'style.backgroundImage', value: "url("+img.url+")"});}}
 			];
 
 			settings.forEach(function(setting){
 				if(self[setting.src]){
 					var element = self.DOM.getElementsByTagName(setting.trg);
 					if(element.length>0){
-						if(!setting.fnc) { element.item(0).innerHTML = self[setting.src]; }
-						else { element.item(0).innerHTML = setting.fnc(self[setting.src]); }
+						if(!setting.fnc) { self.assignProp(element.item(0), "innerHTML", self[setting.src]) }
+						else { 
+							var result = setting.fnc(self[setting.src]);
+							self.assignProp(element.item(0), result.attr, result.value);
+						}
 					}
 				}
 			});
+		}
+
+		//A function that sets a specific attribute of an object, can take property paths as string
+		self.assignProp = function(obj, propPath, value){
+			var path = propPath.split('.');
+			if(undefined === obj) throw "Object path doesn't exist! "+propPath;
+			if(path.length>1) self.assignProp(obj[path.shift()], path.join("."), value);
+			else obj[path.shift()] = value;
+		}
+		
+		//I just want to format the time.. and had to add a leading-zeroes-function, into the function! Functionception?
+		self.formatTime = function(time){	
+			if(!Number.prototype.hasOwnProperty('pad')){Number.prototype.pad = function(size) {var s = String(this);while (s.length < (size || 2)) {s = "0" + s;}return s;};}
+			return (time.getFullYear()+"-"+time.getMonth().pad(2)+"-"+time.getDate().pad(2)+" "+time.getHours().pad(2)+":"+time.getMinutes().pad(2)+":"+time.getSeconds().pad(2));
 		}
 
 		this.moveTo = function(position){
