@@ -2,7 +2,6 @@ window.onload = function(){
 	"use strict";
 
 	var feedHandler ={
-
 		//This functions sets up needed variables for the feed
 		setup: function(container){			
 			var self = this;				//This is ourselves
@@ -15,6 +14,7 @@ window.onload = function(){
 			self.transitionTime 		=  Math.max(((self.transitionTime.indexOf( "ms" ) >- 1 ) ? parseFloat( self.transitionTime ) : parseFloat( self.transitionTime ) * 1000), 200);
 			self.imageWidth 			= parseFloat(window.getComputedStyle(self.articleTemplate.getElementsByTagName("img").item(0)).getPropertyValue("width"));
 			self.minimumMargin 			= parseFloat(window.getComputedStyle(self.articleTemplate).getPropertyValue("margin-bottom"));
+			self.currentMargin			= self.minimumMargin;
 			self.numberOfArticlesToFetch= 1;
 			self.articles 				= Array();
 			self.deadArticles 			= Array();
@@ -56,7 +56,7 @@ window.onload = function(){
 			window.setTimeout(function(){self.removeArticles(feed);}, self.transitionTime);
 			window.setTimeout(function(){self.positionArticles();}, self.transitionTime*2);
 			window.setTimeout(function(){self.showArticles();}, self.transitionTime*3);
-			if(self.articles.length<3) window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*4);
+			window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*4);
 		},
 
 		removeArticles: function(feed){
@@ -106,6 +106,7 @@ window.onload = function(){
 
 			self.numberOfArticlesToFetch = visibleArticles+1;
 			optimalMargin = Math.round( (containerHeight - aggregatedHeight) / (visibleArticles + 1) );
+			self.currentMargin = optimalMargin;
 			//Then we calculate margin and position objects
 			aggregatedHeight = optimalMargin;
 			for(var i = 0; i<self.articles.length; i++){
@@ -122,7 +123,7 @@ window.onload = function(){
 			var containerHeight = self.container.clientHeight;
 			self.articles.forEach(function(article){
 				if(!article.removed){
-					if( (article.position + article.height) < containerHeight ){
+					if( (article.position + article.height) < (containerHeight) &&  article.height>0){
 						article.show();
 					}
 					else{
@@ -166,6 +167,7 @@ window.onload = function(){
 			self.hidden = false;
 			self.removed = false;
 			self.inited = false;
+			self.alert = false;
 			self.hide();
 		}
 
@@ -189,9 +191,15 @@ window.onload = function(){
 			self.title = data.title;
 			self.image = data.image;
 			self.text = data.text;
-			if(data.updated>self.updated){
+			if(data.updated>self.updated || !self.updated){
 				self.updated = data.updated;
 				self.updateDOM(self);
+				self.alert = true;
+				self.DOM.classList.add('alert');
+			}
+			else{
+				self.alert=false;
+				self.DOM.classList.remove('alert');
 			}
 		}
 
@@ -201,7 +209,7 @@ window.onload = function(){
 				{src: "published", trg: "time", fnc: function(time){return({attr: 'innerHTML', value: self.formatTime(new Date(Date.parse(time)))});}},
 				{src: "text", trg: "div", fnc: null},
 				{src: "author", trg: "span", fnc: null},
-				{src: "image", trg: "img", fnc: function(img){console.log(img); return({attr:'style.backgroundImage', value: "url("+img.url+")"});}}
+				{src: "image", trg: "img", fnc: function(img){return({attr:'style.backgroundImage', value: "url("+img.url+")"});}}
 			];
 
 			settings.forEach(function(setting){
@@ -234,6 +242,7 @@ window.onload = function(){
 
 		this.moveTo = function(position){
 			var self = this;
+			self.position=position;
 			self.DOM.style.top=position+"px";
 		};
 
