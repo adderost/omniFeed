@@ -23,7 +23,6 @@ html, body{
 
 
 article{
-	transition: 0.5s;
 	border:2px solid white;
 	background: black;
 	border-radius: 5px;
@@ -32,6 +31,23 @@ article{
 	position: relative;
 	transition-duration:0.2s;
 	width: 100%;
+}
+
+article:after{
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+	background: white;
+	opacity: 0;
+	transition: 0.5s;
+}
+
+article.alert:after{
+	transition: 0s;
+	opacity: 1;
 }
 
 article>img{
@@ -78,10 +94,4 @@ article:after{
 	display: block;
 	content:" ";
 	clear:both;
-}
-
-
-article.alert{
-	transition: 0s;
-	background: white;
 }
