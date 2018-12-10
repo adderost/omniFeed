@@ -23,6 +23,7 @@ html, body{
 
 
 article{
+	transition: 0.5s;
 	border:2px solid white;
 	border-radius: 5px;
 	margin-bottom: 1em;
@@ -76,4 +77,10 @@ article:after{
 	display: block;
 	content:" ";
 	clear:both;
+}
+
+
+article.alert{
+	transition: 0s;
+	border-color: red;
 }
