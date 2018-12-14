@@ -18,7 +18,7 @@ window.onload = function(){
 			self.numberOfArticlesToFetch= 1;
 			self.articles 				= Array();
 			self.deadArticles 			= Array();
-
+			self.fetchedFeed			= Array()
 			self.articleTemplate.style.position = "absolute";
 			self.articleTemplate.style.opacity = 0;
 
@@ -43,9 +43,10 @@ window.onload = function(){
 		//Parses the feed, tries to update every article that already exists, and adds the ones that don't
 		parseFeed: function(response){
 			var self = this;
-			var feed = JSON.parse(response);
-			feed.forEach(function(element){
-				var exists = false;
+			var exists = false;
+			self.fetchedFeed = JSON.parse(response);
+			self.fetchedFeed.forEach(function(element){
+				exists = false;
 				self.articles.forEach(function(article){
 					if(article.updateContent(element)){ exists = true; }
 				});
@@ -53,10 +54,7 @@ window.onload = function(){
 			});
 
 			//The rest of the cycle
-			window.setTimeout(function(){self.removeArticles(feed);}, self.transitionTime);
-			window.setTimeout(function(){self.positionArticles();}, self.transitionTime*2);
-			window.setTimeout(function(){self.showArticles();}, self.transitionTime*3);
-			window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*4);
+			window.setTimeout(function(){self.removeArticles(self.fetchedFeed);}, self.transitionTime);
 		},
 
 		removeArticles: function(feed){
@@ -79,7 +77,7 @@ window.onload = function(){
 			articlesToPurge.reverse().forEach(function(index){
 				self.deadArticles.push(self.articles.splice(index, 1)[0]);
 			});
-
+			window.setTimeout(function(){self.positionArticles();}, self.transitionTime);
 		},
 
 		//Positions the articles in the container
@@ -116,6 +114,7 @@ window.onload = function(){
 				}
 			}
 			//Next step is showing stuff
+			window.setTimeout(function(){self.showArticles();}, self.transitionTime);
 		},
 
 		showArticles: function(){
@@ -131,6 +130,7 @@ window.onload = function(){
 					}
 				}
 			});
+			window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*2);
 		},
 
 		//Creates a new article based on feed data and adds it to the DOM. If we have dead articles, reuse memory;
@@ -143,6 +143,7 @@ window.onload = function(){
 				newArticle = self.deadArticles.shift();
 				if(!newArticle.updateContent(data)){
 					newArticle.getContentFromData(data, newArticle);
+					newArticle.removed = false;
 					console.log("Reusing articleObject");
 				}
 			}
@@ -250,6 +251,7 @@ window.onload = function(){
 			var self = this;
 			self.hide();
 			self.removed=true;
+			self.moveTo(0);
 		};
 
 		this.hide = function(){
