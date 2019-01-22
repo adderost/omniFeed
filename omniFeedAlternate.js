@@ -278,5 +278,5 @@ window.onload = function(){
 		self.getContentFromData(data, self);
 	}
 
-	feedHandler.setup(document.getElementById("omnifeed"));
+	feedHandler.setup(document.getElementById("omnifeedInner"));
 };

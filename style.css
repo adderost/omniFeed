@@ -15,16 +15,30 @@ html, body{
 
 #omnifeed{
 	background:black;
-	height: calc(100% - 2em);
+	height: calc(100%);
 	position: relative;
-	margin:1em;
+	padding:0;
 	overflow: hidden;
+}
+
+#omnifeed>canvas{
+	top: 0;
+	left: 0;
+}
+
+#omnifeedInner{
+	position: absolute;
+	top:0;
+	left:0;
+	margin:1em;
+	height: calc(100% - 2em);
+	width: calc(100% - 2em);
 }
 
 
 article{
 	border:0px solid white;
-	background: white;
+	background: rgba(255,255,255,0.8);
 	color: black;
 	border-radius: 5px;
 	margin-bottom: 1em;
@@ -68,8 +82,8 @@ article>h1{
 	font-size: 32px;
 	line-height: 1;
 	padding: 0.5em 3%;
-	margin-top: -2em;
-	position: relative;
+	position: absolute;
+    transform: translateY(-100%);
 	color: white;
 	background: rgba(0,0,0,0.5);
 }

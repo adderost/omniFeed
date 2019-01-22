@@ -314,7 +314,7 @@ window.onload = function(){
 	}
 
 	//When page is loaded. Get the container by ID and create the container object with that element... AND WE'RE LIVE!
-	var container = document.getElementById("omnifeed");
+	var container = document.getElementById("omnifeedInner");
 	var containerObj = new feedContainer(container);
 
 };

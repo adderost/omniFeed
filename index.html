@@ -7,23 +7,81 @@
 
 <body>
 	<div id="omnifeed">
-		<!-- Script will look for a template article element. Supported contents are img (image), h1 (title), time (update time), div (text content), span (author).
-		
-		The script should support whatever styling you throw at it.
-		 -->
-		<article>
-			<img class="articleImg" /> 
-			<h1 class="articleTitle">Title</h1>
-			<time class="articlePub">Pubdate</time>
-			<div class="articleText">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
-			tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-			quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-			consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-			cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
-			proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div>
-			<span class="author">Författare</span>
-		</article>
+		<div id="omnifeedInner">
+			<!-- Script will look for a template article element. Supported contents are img (image), h1 (title), time (update time), div (text content), span (author).
+			
+			The script should support whatever styling you throw at it.
+			 -->
+			<article>
+				<img class="articleImg" /> 
+				<h1 class="articleTitle">Title</h1>
+				<time class="articlePub">Pubdate</time>
+				<div class="articleText">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+				tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+				quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+				consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+				cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+				proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div>
+				<span class="author">Författare</span>
+			</article>
+		</div>
 	</div>
 	<script type="text/javascript" src="omniFeedAlternate.js"></script>
+	<script src="perlin.js" ></script>
+	<script>
+		(function() {
+			var container = document.getElementById('omnifeed');	//The element where we are putting the image
+			var pixelScale = 32;											//How much are we scaling up the pixels. A value of 4 will make every pixel 4x4 pixels
+			var colors = getColors(Math.random()*360);
+			var ticktime = 10000;
+			var pa = perlinArt(container, pixelScale, ticktime, colors);			//Initializes the image
+			pa.start();
+		})();
+
+		function hsvToRgb(h, s, v) {
+		  var r, g, b;
+
+		  var i = Math.floor(h * 6);
+		  var f = h * 6 - i;
+		  var p = v * (1 - s);
+		  var q = v * (1 - f * s);
+		  var t = v * (1 - (1 - f) * s);
+
+		  switch (i % 6) {
+		    case 0: r = v, g = t, b = p; break;
+		    case 1: r = q, g = v, b = p; break;
+		    case 2: r = p, g = v, b = t; break;
+		    case 3: r = p, g = q, b = v; break;
+		    case 4: r = t, g = p, b = v; break;
+		    case 5: r = v, g = p, b = q; break;
+		  }
+
+		  return [ Math.floor(r * 255), Math.floor(g * 255), Math.floor(b * 255) ];
+		}
+
+		function componentToHex(c) {
+			var hex = c.toString(16);
+			return hex.length == 1 ? "0" + hex : hex;
+		}
+
+		function rgbToHex(r, g, b) {
+			return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+		}
+
+		function getColors(hue){
+			colors = [
+				[hue, 0.91, 0.22],
+				[hue, 0.76, 0.33],
+				[hue, 0.60, 0.45],
+				[hue, 0.43, 0.56],
+				[hue, 0.26, 0.68]
+			].map(function(x){
+				var rgb = hsvToRgb(x[0], x[1], x[2]);
+				return (rgbToHex(rgb[0], rgb[1], rgb[2]));
+			})
+			return(colors);
+		}
+
+	</script>
 </body>
 </html>
