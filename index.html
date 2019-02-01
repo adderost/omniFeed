@@ -26,17 +26,32 @@
 			</article>
 		</div>
 	</div>
-	<script type="text/javascript" src="omniFeedAlternate.js"></script>
+	<script type="text/javascript" src="omniFeed.js"></script>
 	<script src="perlin.js" ></script>
 	<script>
 		(function() {
 			var container = document.getElementById('omnifeed');	//The element where we are putting the image
-			var pixelScale = 32;											//How much are we scaling up the pixels. A value of 4 will make every pixel 4x4 pixels
-			var colors = getColors(Math.random()*360);
-			var ticktime = 10000;
+			var pixelScale = 32;	
+			var baseColor = Math.random()*360;										//How much are we scaling up the pixels. A value of 4 will make every pixel 4x4 pixels
+			var colors = getColors(baseColor);
+			var ticktime = 2000;
 			var pa = perlinArt(container, pixelScale, ticktime, colors);			//Initializes the image
 			pa.start();
+			fireEachTick(ticktime, baseColor, pa);
 		})();
+
+		function fireEachTick(ticktime, baseColor, pa){
+			window.ticktime = ticktime;
+			window.newBaseColor = updateBaseColor(baseColor, ((Math.random()*0.2)-0.1));
+			window.pa = pa;
+			colors = getColors(newBaseColor);
+			pa.setColors(colors);
+			window.setTimeout("fireEachTick(ticktime, newBaseColor, pa)", ticktime);
+		}
+
+		function updateBaseColor(baseColor, maxDeg){
+			return(baseColor+(Math.random()*maxDeg));
+		}
 
 		function hsvToRgb(h, s, v) {
 		  var r, g, b;

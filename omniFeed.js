@@ -1,320 +1,282 @@
 window.onload = function(){
 	"use strict";
-	//Object to keep track of the container and updates
-	function feedContainer(container){
-		//Variables used by the object
-		this.self = this;
-		this.container = container;
-		this.articleTemplate = null;
-		this.height = 0;
-		this.imageWidth=0;
-		this.transitionTime = 0;
-		this.minimumMargin = 0;
-		this.articles = Array();
-		this.numberOfArticlesToShow = 1;
-		this.firstTime=true;
-		this.XHR = null;
 
-		//Helper functions
-		this.customAjax = function(url, callback){	//Send getrequest and call the callback on success. Just standard XHR-request, which reuses the XHR-Object for subsequent requests
-			if(!this.XHR){
-				this.XHR = new XMLHttpRequest();
-				this.XHR.addEventListener( "load", callback );
+	var feedHandler ={
+		//This functions sets up needed variables for the feed
+		setup: function(container){			
+			var self = this;				//This is ourselves
+			self.container = container;		//Get the container
+			self.self = this;				//Save a reference to ourselves			
+
+			//Get the article-template and set variables
+			self.articleTemplate 		= self.self.container.getElementsByTagName("article").item(0); 
+			self.transitionTime 		=  window.getComputedStyle(self.articleTemplate).getPropertyValue("transition-duration");
+			self.transitionTime 		=  Math.max(((self.transitionTime.indexOf( "ms" ) >- 1 ) ? parseFloat( self.transitionTime ) : parseFloat( self.transitionTime ) * 1000), 200);
+			self.imageWidth 			= parseFloat(window.getComputedStyle(self.articleTemplate.getElementsByTagName("img").item(0)).getPropertyValue("width"));
+			self.minimumMargin 			= parseFloat(window.getComputedStyle(self.articleTemplate).getPropertyValue("margin-bottom"));
+			self.currentMargin			= self.minimumMargin;
+			self.numberOfArticlesToFetch= 1;
+			self.articles 				= Array();
+			self.deadArticles 			= Array();
+			self.fetchedFeed			= Array()
+			self.articleTemplate.style.position = "absolute";
+			self.articleTemplate.style.opacity = 0;
+
+			//Lastly, remove the template from DOM and start fetching content asynchronously
+			self.container.removeChild(self.articleTemplate);
+
+			//This starts the main loop of Fetch->Parse->Remove->Position->Add
+			window.setTimeout(function(){self.fetchArticles();}, 0);
+		},
+
+		//Fetch articles from server and send the result to parser
+		fetchArticles: function(){
+			var self = this;
+			if(!self.XHR){
+				self.XHR = new XMLHttpRequest();
+				self.XHR.addEventListener( "load", function(){self.parseFeed(this.response);});
 			}
-			this.XHR.open( "GET", url );
-			this.XHR.send();
-		};
+			self.XHR.open( "GET", "feed.php?imgWidth="+(self.imageWidth*2)+"&limit=" + self.numberOfArticlesToFetch );
+			self.XHR.send();
+		},
 
-		this.fetchArticles = function(){	//Fetch the feed, with some queryvars that tailors the feed to our needs.
-			var that = this;
-			this.customAjax("feed.php?imgWidth="+(this.imageWidth*2)+"&limit=" + this.numberOfArticlesToShow, function(){that.updateArticles(this.response);});
-		};
-
-	
-		//This is run on init, sets up the template, variables and starts the main loop
-		this.setupContainerAndTemplate = function(){
-			/*Get the template from dom */
-			var articleTemplate = this.self.container.getElementsByTagName("article").item(0); 
-			
-			/*Set variables from template*/
-			var duration = window.getComputedStyle(articleTemplate).getPropertyValue("transition-duration");
-			this.self.transitionTime = Math.max(((duration.indexOf( "ms" ) >- 1 ) ? parseFloat( duration ) : parseFloat( duration ) * 1000), 200);
-			this.self.imageWidth = parseFloat(window.getComputedStyle(articleTemplate.getElementsByTagName("img").item(0)).getPropertyValue("width"));
-			this.self.minimumMargin = parseFloat(window.getComputedStyle(articleTemplate).getPropertyValue("margin-bottom"));
-	
-			/*Remove content and set styling on template and container*/
-			this.self.container.style.position="relative";
-			articleTemplate.style.opacity = 0;
-			articleTemplate.style.position = "absolute";
-
-			var templateChildren = articleTemplate.children;
-
-			for(var i=0;i<templateChildren.length;i++){
-				templateChildren[i].innerHTML="";
-			}
-			
-			/*Remove the template from DOM but keep in memory */
-			this.self.container.removeChild(articleTemplate);
-			this.self.articleTemplate = articleTemplate;
-
-			//Now start fetching content
-			var that = this;
-			window.setTimeout(function(){that.fetchArticles();}, 0);
-		};
-
-		this.addArticle = function(data){	//Creates a new article object with fetched content. Adds it to the list and enqueues it for display
-			//First create the object with a copy of our template. Then push it to the display stack
-			var newArticle = new article(data, this.self.articleTemplate.cloneNode(true));
-			this.articles.push(newArticle);
-
-			//Now sort the list, sometimes we get articles out of order
-			this.articles.sort(function(a,b){
-				return(Date.parse(b.published) - Date.parse(a.published));
+		//Parses the feed, tries to update every article that already exists, and adds the ones that don't
+		parseFeed: function(response){
+			var self = this;
+			var exists = false;
+			self.fetchedFeed = JSON.parse(response);
+			self.fetchedFeed.forEach(function(element){
+				exists = false;
+				self.articles.forEach(function(article){
+					if(article.updateContent(element)){ exists = true; }
+				});
+				if(!exists){ self.addArticle(element); }
 			});
 
-			//Lastly, we add the created object to the DOM so that it can be displayed
-			this.container.appendChild(newArticle.template);
-		};
+			//The rest of the cycle
+			window.setTimeout(function(){self.removeArticles(self.fetchedFeed);}, self.transitionTime);
+		},
 
-		this.removeArticles = function(feed){	//Checks for articles in display queue that are not in the feed. If they're removed from the feed they're marked for removal in queue too.
-			for(var i=0; i<this.articles.length; i++){
-				var found = false;
-				for(var j=0; j<feed.length;j++){
-					if(this.articles[i].id == feed[j].id) found=true;
+		removeArticles: function(feed){
+			var self = this;
+			var articlesToPurge = Array();
+			self.articles.forEach(function(article, index){
+				if(article.removed){
+					articlesToPurge.push(index);
 				}
-				if(!found){	//First mark for removal, next cycle actually remove it. This is to allow object to gracefully animate
-					if(this.articles[i].removed) {
-						this.container.removeChild(this.articles[i].template);
-						this.articles[i].remove();	//Remove the second time to clear DOM references in object
-						this.articles[i] = null;
+
+				var found = false;
+				feed.forEach(function(feedArticle){
+					if(article.id == feedArticle.id){found = true}
+				});
+				if(!found){
+					article.remove();
+				}
+			});
+
+			articlesToPurge.reverse().forEach(function(index){
+				self.deadArticles.push(self.articles.splice(index, 1)[0]);
+			});
+			window.setTimeout(function(){self.positionArticles();}, self.transitionTime);
+		},
+
+		//Positions the articles in the container
+		positionArticles: function(){
+			var self = this;
+			var containerHeight = self.container.clientHeight;
+			var visibleArticles = 0;
+			var aggregatedHeight = 0;
+			var optimalMargin = 0;
+
+			//Sort articles, then check how much space they need
+			self.articles.sort(function(a,b){return(Date.parse(b.published) - Date.parse(a.published));});
+			self.articles.forEach(function(article){
+				if(!article.removed && article.height > 0){
+					if( ( (aggregatedHeight + article.height) + (self.minimumMargin * (visibleArticles+1) ) ) < containerHeight){
+						aggregatedHeight += article.height;
+						visibleArticles++;
 					}
 					else{
-						this.articles[i].remove();
+						article.hide();
 					}
 				}
-			}
-
-			//Timeout is set to let animation finish before doing next part of the cycle.
-			//After deletion of articles we should move and sort the ones that are left
-			var that = this;
-			setTimeout(function(){that.sortAndMoveArticles();}, this.transitionTime);
-		};
-
-		this.updateArticles = function(result){ //Iterate through the newly fetched feed and update content on existing articles, or add new article if it's not already there.
-			var feed = JSON.parse(result);
-
-			for(var i=0;i<feed.length;i++){
-				var exists = false;
-				for(var j=0; j<this.articles.length; j++){
-					if(this.articles[j].updateContent(feed[i])){
-						exists = true;
-						break;
-					}
-				}
-				if(!exists){
-					this.addArticle(feed[i]);
-				}
-			}
-
-			//After all this we remove the ones we don't use anymore. Memory management and so on
-			this.removeArticles(feed);
-		};
-
-		this.sortAndMoveArticles = function(){	//Sorts the articles in the queue according to update-time. Then tells them to update their position, this will probably animate.
-			this.self.height = this.self.container.clientHeight; //Setup height of feed
-
-			//Move all articles to new array, remove deleted ones.
-			var cleanArticles = Array();
-			for(var i=0; i<this.articles.length;i++){
-				if(this.articles[i]) cleanArticles.push(this.articles[i]);
-			}
-
-			//Sort the new list
-			cleanArticles.sort(function(a,b){
-				return(Date.parse(b.published) - Date.parse(a.published));
 			});
 
-			//How many articles can we fit?
-			var visibleArticles = 0;
-			var aggregatedPixels = 0;
-			for(i=0;i<cleanArticles.length;i++){
-				
-				//Check if we can add the next article with the minimum margin. If it fits, it's added
-				if((aggregatedPixels + cleanArticles[i].height + (this.minimumMargin*(i+1))) >= this.height){
-					cleanArticles[i].hide();
+			self.numberOfArticlesToFetch = visibleArticles+1;
+			optimalMargin = Math.round( (containerHeight - aggregatedHeight) / (visibleArticles + 1) );
+			self.currentMargin = optimalMargin;
+			//Then we calculate margin and position objects
+			aggregatedHeight = optimalMargin;
+			for(var i = 0; i<self.articles.length; i++){
+				if(!self.articles[i].removed){
+					self.articles[i].moveTo(aggregatedHeight);
+					aggregatedHeight += self.articles[i].height + optimalMargin;
 				}
-				else{
-					aggregatedPixels += cleanArticles[i].height;
-					visibleArticles++;
-				} 
 			}
-			
-			//Calculate the margin we're using to vertically center everything
-			var optimalMargin = Math.floor((this.height - aggregatedPixels) / (visibleArticles+1));
-			aggregatedPixels = 0;
+			//Next step is showing stuff
+			window.setTimeout(function(){self.showArticles();}, self.transitionTime);
+		},
 
-			//When we have the margin, we actually position the articles
-			for(i=0; i<cleanArticles.length;i++){
-				var position = aggregatedPixels+optimalMargin;
-				aggregatedPixels += cleanArticles[i].height+optimalMargin;
-				cleanArticles[i].moveTo(position);
-			}
-
-
-			//Set the queue to our new orderded and filtered list.
-			this.articles = cleanArticles;
-
-			//Once again we wait until animations are finished. Then we check which ones should appear.
-			var that = this;
-			setTimeout(function(){that.showArticles();}, this.transitionTime);
-		};
-
-		this.showArticles = function(){ //Checks all articles to see wich ones that are hidden that should actually be shown. Every other article will have moved to it's correct place so we can just fade them in now.
-			if(!this.firstTime){	//We wait until cycle 2 so that we actually know the heights of articles...
-				for(var i = 0; i<this.articles.length ;i++){
-					if( ( this.articles[i].yPos+this.articles[i].height) < this.self.height ){	//If the whole article fits in the container, show it!
-						this.articles[i].show();	
-					} 
-					else this.articles[i].hide();	//Otherwise hide it!
-					if( this.articles[i].yPos > this.self.height ){ //If an article is completely positioned outside of the container, we stop checking and make sure that we're not fetching more articles than needed.
-						this.numberOfArticlesToShow=i;
-						break;
+		showArticles: function(){
+			var self = this;
+			var containerHeight = self.container.clientHeight;
+			self.articles.forEach(function(article){
+				if(!article.removed){
+					if( (article.position + article.height) < (containerHeight) &&  article.height>0){
+						article.show();
+					}
+					else{
+						article.hide();
 					}
 				}
-				if(this.articles[this.articles.length-1].yPos + this.articles[this.articles.length-1].height < this.self.height) this.numberOfArticlesToShow += 1; //If we have room for more articles... possibly... we increment how many we fetch
-			}
-			else this.firstTime = false;
+			});
+			window.setTimeout(function(){self.fetchArticles();}, self.transitionTime*2);
+		},
 
-			//Now we're waiting until animations finish and then some more. Before we fetch the feed again and start a new cycle.
-			var that = this;
-			window.setTimeout(function(){that.fetchArticles();}, (this.transitionTime*2));
-		};
+		//Creates a new article based on feed data and adds it to the DOM. If we have dead articles, reuse memory;
+		addArticle: function(data){
+			var self = this;
 
-		//This is run first, when the container object is created. Automagically!
-		this.setupContainerAndTemplate();
-	}
-
-	//Object to keep track of a single article
-	function article(data, template, container){
-		this.self = this;							//Who am i?
-		this.id = data.id;						//The ID of the article from the feed
-		this.published = data.published;			//When was it published, not really used
-		this.template = template;					//The template to put all our content in
-		this.height = 0;							//How tall are we, or the article... yeah. For positioning. Will update when content change
-		this.yPos = 0;								//Where are we placed?
-		this.hidden = false;						//Are we hidden right now? Not really used... but I like knowing stuff
-		this.removed = false;						//Are we removed/deleted? If so we might be purged soon... removed from existance...
-		this.firstTime = true;						//To check if we were just created. To allow for the DOM to actually calculate our sizes and stuff.
-
-		this.getContentFromData = function(data){	//Gets data from the feed and then tries to put it in the template.
-			this.self.updated = data.updated;
-			this.self.author = data.authors;
-			this.self.title = data.title;
-			this.self.image = data.image;
-			this.self.text = data.text;
-			this.updateTemplate();
-		};
-
-		this.updateContent = function(data){		//When we already exist but got some new data from the feed, check if we need to update and then perhaps actually use that data.
-			this.self.height = this.self.template.offsetHeight;
-			if(data.id == this.self.id){
-				if(data.updated > this.self.updated){
-					this.self.getContentFromData(data);
-					devlog("Updated article \""+this.self.title+"\"");
+			//Setup articleObject, either with existing object or create a new
+			var newArticle = null;
+			if(self.deadArticles.length){
+				newArticle = self.deadArticles.shift();
+				if(!newArticle.updateContent(data)){
+					newArticle.getContentFromData(data, newArticle);
+					newArticle.removed = false;
+					console.log("Reusing articleObject");
 				}
-				return(true);
 			}
-			else return(false);
-		};
+			else{ newArticle = new articleObject(data, self.articleTemplate.cloneNode(true)); }
 
-		this.updateTemplate = function(){			//Puts available content in available elements in the template. Lots of checks, not that much content.
-			if(this.self.template.getElementsByTagName("img").length > 0){
-				if(this.self.image){
-					this.self.template.getElementsByTagName("img").item(0).style.backgroundImage = "url("+this.self.image.url+")";
-					this.self.template.getElementsByTagName("img").item(0).style.display = "block";
-				}
-				else this.self.template.getElementsByTagName("img").item(0).style.display = "none";
-			}
-			
-			if(this.self.title) {
-				if(this.self.template.getElementsByTagName("h1").length >0 ) this.self.template.getElementsByTagName("h1").item(0).innerHTML = this.self.title;
-			}
-
-			if(this.self.published) {
-				if(this.self.template.getElementsByTagName("time").length > 0) this.self.template.getElementsByTagName("time").item(0).innerHTML = formatTime(new Date(Date.parse(this.self.published)));
-			}
-			
-			if(this.self.text) {
-				if(this.self.template.getElementsByTagName("div").length > 0) this.self.template.getElementsByTagName("div").item(0).innerHTML = this.self.text;
-			}
-			
-			if(this.self.author) {
-				if(this.self.template.getElementsByTagName("span").length > 0) this.self.template.getElementsByTagName("span").item(0).innerHTML = this.self.author;
-			}
-		};
-
-		this.moveTo = function(pos){	//Get a new postition from the container cycle. Add it to our template CSS and let the animation happen
-			if(!this.removed){
-				this.self.yPos = pos;
-				this.self.template.style.top=this.yPos+"px";
-			}
-		};
-
-		this.show = function(){			//If we are hidden, we might stop being hidden, if we're not newly created... in that case we wait one cycle.
-			if(!this.self.firstTime){
-				this.self.template.style.opacity = 1;
-				this.self.hidden = false;
-			}
-			else this.self.firstTime = false;
-		};
-
-		this.remove = function(){		//First it hides us... then next cycle we are marked for removal and will be deleted by the container
-			if(!this.self.removed) {
-				devlog("Removing article from view: \""+this.self.title+"\"");
-				this.self.hide();
-				this.self.removed = true;
-			}
-			else{//Stuff to make sure the Garbage Collector actually removes things. Will run on cycle after first removal
-				devlog("Removing article from memory: \""+this.self.title+"\"");
-				this.self.template = null;
-				this.self = null;
-			}
-		};
-
-		this.hide = function(){			//Hides us... with opacity... Animated
-			this.template.style.opacity = 0;
-			this.hidden = true;
-		};
-
-		//When we are created, we fetch our data and log to console that we are created. 
-		this.self.getContentFromData(data);	
-		devlog("Added new article \""+this.self.title+"\"");
-	}
-
-	function formatTime(time){	//I just want to format the time.. and had to add a leading-zeroes-function, into the function! Functionception?
-		if(!Number.prototype.hasOwnProperty('pad')){
-			Number.prototype.pad = function(size) {
-				var s = String(this);
-				while (s.length < (size || 2)) {s = "0" + s;}
-				return s;
-			};
+			//Then add the articleObject to active articles and DOM
+			self.articles.push(newArticle);
+			self.container.appendChild(newArticle.DOM);
 		}
-		return (time.getFullYear()+"-"+time.getMonth().pad(2)+"-"+time.getDate().pad(2)+" "+time.getHours().pad(2)+":"+time.getMinutes().pad(2)+":"+time.getSeconds().pad(2));
-	}
 
-	var devtools = /./;	//This is used to see if we have an open console, so that we don't spam unnecessarily
-	devtools.toString = function() {
-		this.opened = true;
+		
 	};
 
-	function devlog(msg){
-		if(devtools){
-			console.log(msg);
+	//This object holds everything needed to show an article
+	function articleObject(data, template){
+		var self = this;
+		self.DOM = template;
+
+		function init(self){
+			self.height = 0;
+			self.position = 0;
+			self.hidden = false;
+			self.removed = false;
+			self.inited = false;
+			self.alert = false;
+			self.hide();
 		}
+
+		self.updateContent = function (data){
+			var self = this;
+
+			if(self.id == data.id){
+				self.getContentFromData(data, self);
+				self.height = self.DOM.offsetHeight;
+				return(true);
+			}
+			else{
+				return(false);
+			}
+		};
+
+		self.getContentFromData = function(data, self){
+			self.id = data.id;
+			self.published = data.published;
+			self.author = data.authors;
+			self.title = data.title;
+			self.image = data.image;
+			self.text = data.text;
+			if(data.updated>self.updated || !self.updated){
+				self.updated = data.updated;
+				self.updateDOM(self);
+				self.alert = true;
+				self.DOM.classList.add('alert');
+			}
+			else{
+				self.alert=false;
+				self.DOM.classList.remove('alert');
+			}
+		}
+
+		self.updateDOM = function(self){
+			var settings = [
+				{src: "title", trg: "h1", fnc: null},
+				{src: "published", trg: "time", fnc: function(time){return({attr: 'innerHTML', value: self.formatTime(new Date(Date.parse(time)))});}},
+				{src: "text", trg: "div", fnc: null},
+				{src: "author", trg: "span", fnc: null},
+				{src: "image", trg: "img", fnc: function(img){return({attr:'style.backgroundImage', value: "url("+img.url+")"});}}
+			];
+
+			settings.forEach(function(setting){
+				if(self[setting.src]){
+					var element = self.DOM.getElementsByTagName(setting.trg);
+					if(element.length>0){
+						if(!setting.fnc) { self.assignProp(element.item(0), "innerHTML", self[setting.src]) }
+						else { 
+							var result = setting.fnc(self[setting.src]);
+							self.assignProp(element.item(0), result.attr, result.value);
+						}
+					}
+				}
+			});
+		}
+
+		//A function that sets a specific attribute of an object, can take property paths as string
+		self.assignProp = function(obj, propPath, value){
+			var path = propPath.split('.');
+			if(undefined === obj) throw "Object path doesn't exist! "+propPath;
+			if(path.length>1) self.assignProp(obj[path.shift()], path.join("."), value);
+			else obj[path.shift()] = value;
+		}
+		
+		//I just want to format the time.. and had to add a leading-zeroes-function, into the function! Functionception?
+		self.formatTime = function(time){	
+			if(!Number.prototype.hasOwnProperty('pad')){Number.prototype.pad = function(size) {var s = String(this);while (s.length < (size || 2)) {s = "0" + s;}return s;};}
+			return (time.getFullYear()+"-"+(time.getMonth()+1).pad(2)+"-"+time.getDate().pad(2)+" "+time.getHours().pad(2)+":"+time.getMinutes().pad(2)+":"+time.getSeconds().pad(2));
+		}
+
+		this.moveTo = function(position){
+			var self = this;
+			self.position=position;
+			self.DOM.style.top=position+"px";
+		};
+
+		this.remove = function(){
+			var self = this;
+			self.hide();
+			self.removed=true;
+			self.moveTo(0);
+		};
+
+		this.hide = function(){
+			var self = this;
+			self.hidden = true;
+			self.DOM.style.opacity=0;
+		};
+
+		this.show = function(){
+			var self = this;
+			if(!self.removed){
+				if(self.inited){
+					self.hidden = false;
+					self.DOM.style.opacity=1;
+				}
+				else{
+					self.inited = true;
+				}
+			}
+		};
+
+		//Init default variables and get content
+		init(self);
+		self.getContentFromData(data, self);
 	}
 
-	//When page is loaded. Get the container by ID and create the container object with that element... AND WE'RE LIVE!
-	var container = document.getElementById("omnifeedInner");
-	var containerObj = new feedContainer(container);
-
+	feedHandler.setup(document.getElementById("omnifeedInner"));
 };

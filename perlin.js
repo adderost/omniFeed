@@ -37,6 +37,11 @@
 			window.clearInterval(self.ticker);
 		};
 
+		this.setColors = function(style){
+			let self = this;
+			if(style.length>0) self.style = style;
+		}
+
 
 		this.perlin = function(width, height){
 
